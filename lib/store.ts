@@ -215,7 +215,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         isVotingComplete: false,
         timeRemaining: timerDuration,
         timerDuration,
-        isTimerRunning: false,
+        isTimerRunning: false, // Timer starts stopped by default
         isPaused: false,
         currentPlayerIndex: 0,
         storyPointHistory: [],
@@ -272,10 +272,6 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       saveGame(game.id, updatedGame);
       set({ game: updatedGame });
-
-      if (updatedGame.players.length === game.maxPlayers) {
-        startTimer();
-      }
     },
     submitVote: (playerId: string, value: number, confidence: number) => {
       const game = get().game;
@@ -377,7 +373,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         players: game.players.map((player) => ({ ...player, vote: null })),
         isVotingComplete: false,
         timeRemaining: game.timerDuration,
-        isTimerRunning: true,
+        isTimerRunning: false, // Timer starts stopped in new rounds
         isPaused: false,
         storyPointHistory: [...game.storyPointHistory, newStoryPoint],
         currentRound: game.currentRound + 1,
@@ -386,7 +382,6 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       saveGame(game.id, updatedGame);
       set({ game: updatedGame });
-      startTimer();
     },
     completeVoting: () => {
       if (timerInterval) {
