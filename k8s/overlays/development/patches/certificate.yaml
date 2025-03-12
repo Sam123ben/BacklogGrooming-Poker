@@ -1,0 +1,8 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: planning-poker-tls
+spec:
+  secretName: planning-poker-tls-dev
+  dnsNames:
+    - dev.planning-poker.example.com

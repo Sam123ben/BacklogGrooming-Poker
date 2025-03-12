@@ -1,0 +1,16 @@
+{{- if .Values.certificates.clusterIssuer.create }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.certificates.clusterIssuer.name }}
+spec:
+  acme:
+    server: {{ .Values.certificates.clusterIssuer.server | default "https://acme-v02.api.letsencrypt.org/directory" }}
+    email: {{ .Values.certificates.clusterIssuer.email }}
+    privateKeySecretRef:
+      name: {{ .Values.certificates.clusterIssuer.name }}-account-key
+    solvers:
+    - http01:
+        ingress:
+          class: {{ .Values.ingress.className }}
+{{- end }}

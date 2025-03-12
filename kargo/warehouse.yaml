@@ -1,0 +1,17 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: planning-poker
+  namespace: kargo-system
+spec:
+  subscriptions:
+  - name: docker-images
+    dockerImage:
+      registry: ghcr.io
+      repository: your-org/planning-poker
+      semverConstraint: ">=1.0.0"
+  - name: helm-charts
+    helm:
+      repository: https://your-org.github.io/planning-poker
+      chart: planning-poker
+      semverConstraint: ">=1.0.0"

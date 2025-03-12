@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "planning-poker.fullname" . }}-smoke-test
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+  labels:
+    {{- include "planning-poker.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "planning-poker.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: smoke-test
+    spec:
+      containers:
+      - name: smoke-test
+        image: mcr.microsoft.com/playwright:v1.42.1-jammy
+        env:
+        - name: BASE_URL
+          value: "http://{{ include "planning-poker.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local"
+        - name: CI
+          value: "true"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          cd /app
+          npm ci
+          npx playwright install chromium --with-deps
+          npm run test:smoke
+        volumeMounts:
+        - name: app-source
+          mountPath: /app
+      restartPolicy: Never
+      volumes:
+      - name: app-source
+        configMap:
+          name: {{ include "planning-poker.fullname" . }}-smoke-test
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "planning-poker.fullname" . }}-smoke-test
+  labels:
+    {{- include "planning-poker.labels" . | nindent 4 }}
+data:
+  "package.json": |
+{{ .Files.Get "files/package.json" | indent 4 }}
+  "playwright.config.ts": |
+{{ .Files.Get "files/playwright.config.ts" | indent 4 }}
+  "e2e/smoke.spec.ts": |
+{{ .Files.Get "files/smoke.spec.ts" | indent 4 }}

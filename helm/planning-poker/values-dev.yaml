@@ -1,0 +1,28 @@
+environment: development
+
+image:
+  tag: latest
+
+ingress:
+  enabled: true
+  hosts:
+    - host: dev.planning-poker.example.com
+
+redis:
+  persistence:
+    size: 5Gi
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+env:
+  NEXT_PUBLIC_APP_URL: https://dev.planning-poker.example.com
+  NEXT_PUBLIC_APP_NAME: Planning Poker (Dev)
+  NEXT_PUBLIC_API_URL: https://dev.planning-poker.example.com/api
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_SSL: "false"

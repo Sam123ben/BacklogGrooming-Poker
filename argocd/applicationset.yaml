@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: planning-poker
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements:
+      - name: development
+        url: https://github.com/your-org/planning-poker.git
+        targetRevision: develop
+        namespace: planning-poker-dev
+        valueFile: values-dev.yaml
+      - name: staging
+        url: https://github.com/your-org/planning-poker.git
+        targetRevision: staging
+        namespace: planning-poker-stage
+        valueFile: values-stage.yaml
+      - name: production
+        url: https://github.com/your-org/planning-poker.git
+        targetRevision: main
+        namespace: planning-poker-prod
+        valueFile: values-prod.yaml
+  template:
+    metadata:
+      name: planning-poker-{{name}}
+      namespace: argocd
+      finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: planning-poker
+      source:
+        repoURL: {{url}}
+        targetRevision: {{targetRevision}}
+        path: helm/planning-poker
+        helm:
+          valueFiles:
+          - {{valueFile}}
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: {{namespace}}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+        - CreateNamespace=true
+        - ServerSideApply=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

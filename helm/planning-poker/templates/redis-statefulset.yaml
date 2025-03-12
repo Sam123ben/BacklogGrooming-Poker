@@ -1,0 +1,61 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "planning-poker.fullname" . }}-redis
+  labels:
+    {{- include "planning-poker.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: {{ include "planning-poker.fullname" . }}-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "planning-poker.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "planning-poker.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        command:
+        - redis-server
+        - --appendonly
+        - "yes"
+        resources:
+          {{- toYaml .Values.redis.resources | nindent 10 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.redis.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "planning-poker.fullname" . }}-redis
+  labels:
+    {{- include "planning-poker.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  ports:
+  - port: 6379
+    name: redis
+  clusterIP: None
+  selector:
+    {{- include "planning-poker.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+{{- end }}

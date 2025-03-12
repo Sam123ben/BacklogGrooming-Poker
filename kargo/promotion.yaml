@@ -1,0 +1,64 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Promotion
+metadata:
+  name: planning-poker
+  namespace: kargo-system
+spec:
+  pipeline: planning-poker
+  source:
+    stage: development
+  targets:
+  - stage: production
+    requirements:
+    - name: smoke-tests
+      stageGate:
+        jobTemplate:
+          spec:
+            template:
+              spec:
+                containers:
+                - name: smoke-test
+                  image: mcr.microsoft.com/playwright:v1.42.1-jammy
+                  env:
+                  - name: BASE_URL
+                    value: "http://planning-poker.development.svc.cluster.local"
+                  - name: CI
+                    value: "true"
+                  command:
+                  - /bin/bash
+                  - -c
+                  - |
+                    cd /app
+                    npm ci
+                    npx playwright install chromium --with-deps
+                    npm run test:smoke
+                    # Send webhook notification on success
+                    if [ $? -eq 0 ]; then
+                      curl -X POST \
+                        -H "Content-Type: application/json" \
+                        -d '{"event": "smoke_test_passed", "service": "planning-poker"}' \
+                        ${KARGO_WEBHOOK_URL}
+                    fi
+                  env:
+                  - name: KARGO_WEBHOOK_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: kargo-webhooks
+                        key: url
+                  volumeMounts:
+                  - name: app-source
+                    mountPath: /app
+                volumes:
+                - name: app-source
+                  configMap:
+                    name: planning-poker-smoke-test
+    analysis:
+      successfulRuns: 1
+      failureLimit: 0
+      interval: 10s
+      count: 1
+      metrics:
+      - name: smoke_test_success
+        provider: webhook
+        successCondition: result.smoke_test_passed == true
+        query: smoke_test_passed

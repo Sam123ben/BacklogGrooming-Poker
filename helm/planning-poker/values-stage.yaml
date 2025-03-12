@@ -1,0 +1,28 @@
+environment: staging
+
+image:
+  tag: stable
+
+ingress:
+  enabled: true
+  hosts:
+    - host: stage.planning-poker.example.com
+
+redis:
+  persistence:
+    size: 10Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+env:
+  NEXT_PUBLIC_APP_URL: https://stage.planning-poker.example.com
+  NEXT_PUBLIC_APP_NAME: Planning Poker (Staging)
+  NEXT_PUBLIC_API_URL: https://stage.planning-poker.example.com/api
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_SSL: "false"

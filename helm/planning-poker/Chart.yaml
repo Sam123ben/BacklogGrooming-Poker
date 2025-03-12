@@ -1,0 +1,21 @@
+apiVersion: v2
+name: planning-poker
+description: A Helm chart for Planning Poker application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+maintainers:
+  - name: "StackBlitz"
+    email: "support@stackblitz.com"
+
+keywords:
+  - planning-poker
+  - agile
+  - scrum
+
+dependencies:
+  - name: redis
+    version: "17.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled

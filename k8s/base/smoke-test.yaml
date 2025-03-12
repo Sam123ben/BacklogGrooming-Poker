@@ -1,0 +1,90 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: planning-poker-smoke-test
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: planning-poker
+        component: smoke-test
+    spec:
+      containers:
+      - name: smoke-test
+        image: mcr.microsoft.com/playwright:v1.42.1-jammy
+        env:
+        - name: BASE_URL
+          value: "http://planning-poker.$(NAMESPACE).svc.cluster.local"
+        - name: CI
+          value: "true"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          cd /app
+          npm ci
+          npx playwright install chromium --with-deps
+          npm run test:smoke
+        volumeMounts:
+        - name: app-source
+          mountPath: /app
+      restartPolicy: Never
+      volumes:
+      - name: app-source
+        configMap:
+          name: planning-poker-smoke-test
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: planning-poker-smoke-test
+data:
+  "package.json": |
+    {
+      "name": "planning-poker-smoke-test",
+      "version": "1.0.0",
+      "private": true,
+      "scripts": {
+        "test:smoke": "playwright test --grep @smoke"
+      },
+      "devDependencies": {
+        "@playwright/test": "^1.42.1",
+        "typescript": "5.2.2"
+      }
+    }
+  "playwright.config.ts": |
+    import { defineConfig, devices } from '@playwright/test';
+
+    export default defineConfig({
+      testDir: './e2e',
+      fullyParallel: true,
+      forbidOnly: true,
+      retries: 2,
+      workers: 1,
+      reporter: ['list'],
+      use: {
+        baseURL: process.env.BASE_URL || 'http://localhost:3000',
+        trace: 'on-first-retry',
+        screenshot: 'only-on-failure',
+        video: 'retain-on-failure',
+      },
+      projects: [
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ],
+    });
+  "e2e/smoke.spec.ts": |
+    import { test, expect } from '@playwright/test';
+
+    test('basic smoke test @smoke', async ({ page }) => {
+      await page.goto('/');
+      await expect(page).toHaveTitle('Planning Poker');
+      await expect(page.getByText('Planning Poker')).toBeVisible();
+    });

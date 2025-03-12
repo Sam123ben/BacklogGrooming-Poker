@@ -1,0 +1,41 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: development
+  namespace: kargo-system
+spec:
+  pipeline: planning-poker
+  promotionMechanics:
+    type: manual
+  subscriptions:
+  - name: docker-images
+    source:
+      warehouse:
+        name: planning-poker
+        subscription: docker-images
+  - name: helm-charts
+    source:
+      warehouse:
+        name: planning-poker
+        subscription: helm-charts
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: production
+  namespace: kargo-system
+spec:
+  pipeline: planning-poker
+  promotionMechanics:
+    type: automated
+  subscriptions:
+  - name: docker-images
+    source:
+      stage:
+        name: development
+        subscription: docker-images
+  - name: helm-charts
+    source:
+      stage:
+        name: development
+        subscription: helm-charts

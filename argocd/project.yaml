@@ -1,0 +1,70 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: planning-poker
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Planning Poker Application Project
+  
+  # Source repositories
+  sourceRepos:
+  - 'https://github.com/your-org/planning-poker.git'
+  - 'https://charts.bitnami.com/bitnami'
+  
+  # Destination clusters and namespaces
+  destinations:
+  - namespace: planning-poker-dev
+    server: https://kubernetes.default.svc
+  - namespace: planning-poker-stage
+    server: https://kubernetes.default.svc
+  - namespace: planning-poker-prod
+    server: https://kubernetes.default.svc
+  
+  # Cluster resource allowlist
+  clusterResourceWhitelist:
+  - group: 'cert-manager.io'
+    kind: ClusterIssuer
+  - group: 'monitoring.coreos.com'
+    kind: ServiceMonitor
+  
+  # Namespace resource allowlist
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  
+  # Sync windows
+  syncWindows:
+  - kind: allow
+    schedule: '* * * * *'
+    duration: 24h
+    applications:
+    - planning-poker-development
+  - kind: allow
+    schedule: '* * * * *'
+    duration: 24h
+    applications:
+    - planning-poker-staging
+  - kind: allow
+    schedule: '0 2 * * 0'  # Only allow prod syncs on Sundays at 2 AM
+    duration: 2h
+    applications:
+    - planning-poker-production
+    
+  # Role bindings
+  roles:
+  - name: developer
+    description: Developer role
+    policies:
+    - p, proj:planning-poker:developer, applications, get, planning-poker/planning-poker-development, allow
+    - p, proj:planning-poker:developer, applications, sync, planning-poker/planning-poker-development, allow
+  - name: reviewer
+    description: Reviewer role
+    policies:
+    - p, proj:planning-poker:reviewer, applications, get, planning-poker/*, allow
+    - p, proj:planning-poker:reviewer, applications, sync, planning-poker/planning-poker-staging, allow
+  - name: admin
+    description: Admin role
+    policies:
+    - p, proj:planning-poker:admin, applications, *, planning-poker/*, allow

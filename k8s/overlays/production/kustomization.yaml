@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: planning-poker-prod
+
+bases:
+- ../../base
+
+commonLabels:
+  environment: production
+
+resources:
+- redis-prod.yaml
+
+patches:
+- path: patches/deployment.yaml
+- path: patches/ingress.yaml
+- path: patches/certificate.yaml
+- path: patches/cluster-issuer.yaml
+
+configMapGenerator:
+- name: planning-poker-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=production
+
+secretGenerator:
+- name: planning-poker-env
+  behavior: merge
+  files:
+  - .env=env/production.env

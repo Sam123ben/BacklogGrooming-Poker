@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planning-poker
+spec:
+  template:
+    spec:
+      containers:
+      - name: planning-poker
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: ENVIRONMENT
+          value: "staging"

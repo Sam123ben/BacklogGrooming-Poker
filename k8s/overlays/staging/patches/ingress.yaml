@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: planning-poker
+spec:
+  rules:
+  - host: stage.planning-poker.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: planning-poker
+            port:
+              name: http
+  tls:
+  - hosts:
+    - stage.planning-poker.example.com
+    secretName: planning-poker-tls-stage
