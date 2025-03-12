@@ -2,7 +2,7 @@
 
 A real-time planning poker application for agile teams with a modern, responsive interface and robust features.
 
-![Planning Poker Screenshot](https://images.unsplash.com/photo-1611224923853-80b023f02d71?auto=format&fit=crop&w=1200&q=80)
+![Planning Poker](./image.png)
 
 ## Features
 
@@ -21,21 +21,70 @@ A real-time planning poker application for agile teams with a modern, responsive
 
 - **Framework**: Next.js 13 with App Router
 - **State Management**: Zustand
+- **Data Storage**: Redis
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Animations**: Framer Motion
 - **Testing**: Vitest + React Testing Library + Playwright
 - **Deployment**: Docker + Kubernetes + Kargo
 - **Environment**: Configurable through environment variables
 
-## Getting Started
-
-### Prerequisites
+## Prerequisites
 
 - Node.js 20.x or later
 - npm 9.x or later
+- Redis 6.x or later
 - Docker (optional, for containerized deployment)
 
-### Local Development
+## Local Development Setup
+
+### 1. Install Redis Locally
+
+**Ubuntu/Debian**:
+```bash
+# Update package list
+sudo apt update
+
+# Install Redis
+sudo apt install redis-server
+
+# Start Redis service
+sudo systemctl start redis-server
+
+# Enable Redis to start on boot
+sudo systemctl enable redis-server
+
+# Verify Redis is running
+redis-cli ping
+# Should return "PONG"
+```
+
+**macOS**:
+```bash
+# Install Redis using Homebrew
+brew install redis
+
+# Start Redis service
+brew services start redis
+
+# Verify Redis is running
+redis-cli ping
+# Should return "PONG"
+```
+
+**Windows**:
+```bash
+# Using Windows Subsystem for Linux (WSL2) - Recommended
+wsl --install
+wsl sudo apt update
+wsl sudo apt install redis-server
+wsl sudo service redis-server start
+
+# Verify Redis is running
+wsl redis-cli ping
+# Should return "PONG"
+```
+
+### 2. Application Setup
 
 1. Clone the repository:
    ```bash
@@ -48,116 +97,124 @@ A real-time planning poker application for agile teams with a modern, responsive
    npm install
    ```
 
-3. Copy the environment file and configure:
+3. Copy the environment file:
    ```bash
    cp .env.example .env
    ```
 
-4. Start the development server:
+4. Configure local Redis in `.env`:
+   ```env
+   # Application
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   NEXT_PUBLIC_APP_NAME=Planning Poker
+   NEXT_PUBLIC_APP_DESCRIPTION=A real-time planning poker application for agile teams
+   NEXT_PUBLIC_API_URL=http://localhost:3000/api
+   
+   # Redis Local Configuration
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+   REDIS_PASSWORD=
+   REDIS_SSL=false
+   ```
+
+### 3. Development Workflow
+
+1. Start Redis (if not running):
+   ```bash
+   # Ubuntu/Debian/WSL
+   sudo service redis-server start
+   
+   # macOS
+   brew services start redis
+   ```
+
+2. Verify Redis connection:
+   ```bash
+   redis-cli
+   127.0.0.1:6379> ping
+   PONG
+   127.0.0.1:6379> exit
+   ```
+
+3. Run the development server:
    ```bash
    npm run dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Docker Deployment
-
-1. Build and run with docker-compose:
+4. Run tests:
    ```bash
-   docker-compose up --build
+   # Unit tests in watch mode
+   npm run test
+   
+   # Unit tests with coverage
+   npm run test:coverage
+   
+   # E2E tests
+   npm run test:e2e
+   
+   # Smoke tests only
+   npm run test:smoke
    ```
 
-2. Or build and run with Docker directly:
+5. Build for production:
    ```bash
-   docker build \
-     --build-arg NEXT_PUBLIC_APP_URL=https://your-domain.com \
-     --build-arg NEXT_PUBLIC_APP_NAME="Your App Name" \
-     -t planning-poker .
-
-   docker run -p 3000:80 \
-     -e NEXT_PUBLIC_APP_URL=https://your-domain.com \
-     -e NEXT_PUBLIC_APP_NAME="Your App Name" \
-     planning-poker
+   npm run build
    ```
 
-## Development
+6. Start production server:
+   ```bash
+   npm run start
+   ```
 
-### Project Structure
+### 4. Redis Management
 
-```
-planning-poker/
-├── app/                   # Next.js app directory
-├── components/            # React components
-│   ├── ui/               # UI components from shadcn/ui
-│   └── playing-cards/    # Game-specific components
-├── lib/                  # Utilities and store
-├── __tests__/           # Unit tests
-├── e2e/                 # E2E tests
-├── k8s/                 # Kubernetes manifests
-├── helm/                # Helm charts
-└── kargo/               # Kargo configuration
-```
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build production bundle
-- `npm run start` - Start production server
-- `npm run test` - Run unit tests
-- `npm run test:coverage` - Run tests with coverage
-- `npm run test:e2e` - Run E2E tests
-- `npm run test:smoke` - Run smoke tests
-- `npm run test:ci` - Run all tests (CI environment)
-- `npm run lint` - Run ESLint
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_APP_URL` | Application URL | http://localhost:3000 |
-| `NEXT_PUBLIC_APP_NAME` | Application name | Planning Poker |
-| `NEXT_PUBLIC_APP_DESCRIPTION` | Application description | A real-time planning poker application... |
-| `NEXT_PUBLIC_API_URL` | API endpoint | http://localhost:3000/api |
-| `NEXT_PUBLIC_AUTH_ENABLED` | Enable authentication | false |
-| `NEXT_PUBLIC_ENABLE_DARK_MODE` | Enable dark mode | true |
-| `NEXT_PUBLIC_ENABLE_ANALYTICS` | Enable analytics | false |
-
-### Testing
-
-The project uses a comprehensive testing strategy:
-
-1. **Unit Tests** (Vitest + React Testing Library)
-   - Component tests
-   - Store tests
-   - Utility tests
-
-2. **E2E Tests** (Playwright)
-   - User flow tests
-   - Smoke tests
-   - Cross-browser testing
-
-Run tests:
+Monitor Redis:
 ```bash
-# Unit tests
-npm run test
+# Monitor all Redis commands
+redis-cli monitor
 
-# E2E tests
-npm run test:e2e
+# Check Redis info
+redis-cli info
 
-# Smoke tests
-npm run test:smoke
-
-# All tests with coverage
-npm run test:coverage
+# Clear all data
+redis-cli flushall
 ```
 
-### Contributing
+Redis configuration file locations:
+- Ubuntu/Debian: `/etc/redis/redis.conf`
+- macOS: `/usr/local/etc/redis.conf`
+- WSL: `/etc/redis/redis.conf`
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Alternative Redis Setups
+
+1. **Azure Cache for Redis**:
+   - Create an Azure Cache for Redis instance
+   - Get connection details from Azure Portal
+   - Update environment variables:
+     ```env
+     REDIS_HOST=your-instance.redis.cache.windows.net
+     REDIS_PORT=6380
+     REDIS_PASSWORD=your_access_key
+     REDIS_SSL=true
+     ```
+
+2. **Docker Redis**:
+   ```bash
+   # Start Redis container
+   docker run --name redis -p 6379:6379 -d redis:alpine
+   
+   # Monitor Redis logs
+   docker logs -f redis
+   
+   # Connect to Redis CLI
+   docker exec -it redis redis-cli
+   ```
+
+3. **Docker Compose**:
+   ```bash
+   # Start Redis with Docker Compose
+   docker-compose up redis
+   ```
 
 ## Deployment
 
@@ -172,7 +229,9 @@ See [DOCKER.md](DOCKER.md) for detailed container deployment instructions.
 
 2. Deploy using Helm:
    ```bash
-   helm install planning-poker ./helm/planning-poker
+   helm install planning-poker ./helm/planning-poker \
+     --set redis.host=your-redis-host \
+     --set redis.password=your-redis-password
    ```
 
 ### Monitoring
@@ -180,5 +239,29 @@ See [DOCKER.md](DOCKER.md) for detailed container deployment instructions.
 - Prometheus metrics available at `/metrics`
 - Grafana dashboards included in Helm chart
 - Health check endpoint at `/health`
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_APP_URL` | Application URL | http://localhost:3000 |
+| `NEXT_PUBLIC_APP_NAME` | Application name | Planning Poker |
+| `NEXT_PUBLIC_APP_DESCRIPTION` | Application description | A real-time planning poker application... |
+| `NEXT_PUBLIC_API_URL` | API endpoint | http://localhost:3000/api |
+| `NEXT_PUBLIC_AUTH_ENABLED` | Enable authentication | false |
+| `NEXT_PUBLIC_ENABLE_DARK_MODE` | Enable dark mode | true |
+| `NEXT_PUBLIC_ENABLE_ANALYTICS` | Enable analytics | false |
+| `REDIS_HOST` | Redis host | localhost |
+| `REDIS_PORT` | Redis port | 6379 |
+| `REDIS_PASSWORD` | Redis password | - |
+| `REDIS_SSL` | Enable Redis SSL | false |
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
