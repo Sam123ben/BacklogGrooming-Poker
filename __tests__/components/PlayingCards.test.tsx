@@ -15,6 +15,14 @@ vi.mock('@/lib/store', () => ({
   useGameStore: vi.fn(),
 }));
 
+vi.mock('@/lib/websocket', () => ({
+  WebSocketClient: vi.fn().mockImplementation(() => ({
+    sendMessage: vi.fn(),
+    updateGameState: vi.fn(),
+    disconnect: vi.fn(),
+  })),
+}));
+
 describe('PlayingCards Component', () => {
   const mockGame = {
     id: 'test-game-id',
@@ -53,6 +61,11 @@ describe('PlayingCards Component', () => {
 
   const mockStore = {
     game: mockGame,
+    wsClient: {
+      sendMessage: vi.fn(),
+      updateGameState: vi.fn(),
+      disconnect: vi.fn(),
+    },
     submitVote: vi.fn(),
     resetVotes: vi.fn(),
     takeOverPlayer: vi.fn(),
