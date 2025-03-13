@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { WebSocketClient } from './websocket';
+import { saveGame, loadGame, deleteGame } from './redis';
 
 export type Vote = {
   value: number;
@@ -46,9 +46,8 @@ export type GameState = {
 
 type GameStore = {
   game: GameState | null;
-  wsClient: WebSocketClient | null;
   createGame: (maxPlayers: number, timerDuration: number) => string;
-  loadGame: (gameId: string) => void;
+  loadGame: (gameId: string) => Promise<void>;
   joinGame: (name: string) => void;
   submitVote: (playerId: string, value: number, confidence: number) => void;
   startTimer: () => void;
@@ -59,6 +58,7 @@ type GameStore = {
   completeVoting: () => void;
   takeOverPlayer: (playerId: string) => void;
   updateConsensusThreshold: (threshold: number) => void;
+  syncGameState: () => Promise<void>;
 };
 
 function calculateFinalValue(players: Player[]): number {
@@ -105,6 +105,7 @@ function findMode(numbers: number[]): number {
 export const useGameStore = create<GameStore>((set, get) => {
   let timerInterval: number | null = null;
   let rafId: number | null = null;
+  let syncInterval: number | null = null;
 
   const startTimer = () => {
     const game = get().game;
@@ -117,15 +118,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       cancelAnimationFrame(rafId);
     }
 
-    const updatedGame = {
-      ...game,
-      isTimerRunning: true,
-      isPaused: false,
-      lastSyncTimestamp: Date.now(),
-    };
-
-    set({ game: updatedGame });
-    get().wsClient?.updateGameState(updatedGame);
+    set({
+      game: {
+        ...game,
+        isTimerRunning: true,
+        isPaused: false,
+      },
+    });
 
     let lastUpdate = performance.now();
     const updateTimer = () => {
@@ -156,8 +155,8 @@ export const useGameStore = create<GameStore>((set, get) => {
             isPaused: false,
             lastSyncTimestamp: Date.now(),
           };
+          saveGame(updatedGame.id, updatedGame);
           set({ game: updatedGame });
-          get().wsClient?.updateGameState(updatedGame);
           return;
         }
 
@@ -166,8 +165,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           timeRemaining: currentGame.timeRemaining - 1,
           lastSyncTimestamp: Date.now(),
         };
+        saveGame(updatedGame.id, updatedGame);
         set({ game: updatedGame });
-        get().wsClient?.updateGameState(updatedGame);
       }
 
       rafId = requestAnimationFrame(updateTimer);
@@ -176,9 +175,37 @@ export const useGameStore = create<GameStore>((set, get) => {
     rafId = requestAnimationFrame(updateTimer);
   };
 
+  const startSync = (gameId: string) => {
+    if (syncInterval) {
+      clearInterval(syncInterval);
+    }
+
+    // Sync every 2 seconds
+    syncInterval = window.setInterval(async () => {
+      const currentGame = get().game;
+      if (!currentGame) return;
+
+      try {
+        const serverGame = await loadGame(gameId);
+        if (!serverGame) return;
+
+        // Only update if server state is newer
+        if (serverGame.lastSyncTimestamp > currentGame.lastSyncTimestamp) {
+          set({ game: serverGame });
+          
+          // Restart timer if it should be running
+          if (serverGame.isTimerRunning && !serverGame.isPaused) {
+            startTimer();
+          }
+        }
+      } catch (error) {
+        console.error('Game sync error:', error);
+      }
+    }, 2000);
+  };
+
   return {
     game: null,
-    wsClient: null,
     createGame: (maxPlayers: number, timerDuration: number) => {
       const gameId = uuidv4();
       const newGame: GameState = {
@@ -188,7 +215,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         isVotingComplete: false,
         timeRemaining: timerDuration,
         timerDuration,
-        isTimerRunning: false,
+        isTimerRunning: false, // Timer starts stopped by default
         isPaused: false,
         currentPlayerIndex: 0,
         storyPointHistory: [],
@@ -197,34 +224,33 @@ export const useGameStore = create<GameStore>((set, get) => {
         currentRound: 1,
         lastSyncTimestamp: Date.now(),
       };
-
-      const wsClient = new WebSocketClient(gameId, (data) => {
-        if (data.type === 'gameState') {
-          set({ game: data.state });
-          if (data.state.isTimerRunning && !data.state.isPaused) {
-            startTimer();
-          }
-        }
-      });
       
-      set({ game: newGame, wsClient });
-      wsClient.updateGameState(newGame);
-      
+      saveGame(gameId, newGame);
+      set({ game: newGame });
+      startSync(gameId);
       return gameId;
     },
-    loadGame: (gameId: string) => {
-      const wsClient = new WebSocketClient(gameId, (data) => {
-        if (data.type === 'gameState') {
-          set({ game: data.state });
-          if (data.state.isTimerRunning && !data.state.isPaused) {
-            startTimer();
-          }
+    loadGame: async (gameId: string) => {
+      const game = await loadGame(gameId);
+      if (game) {
+        set({ game });
+        startSync(gameId);
+        if (game.isTimerRunning && !game.isPaused) {
+          startTimer();
         }
-      });
-      set({ wsClient });
+      }
+    },
+    syncGameState: async () => {
+      const currentGame = get().game;
+      if (!currentGame) return;
+      
+      const serverGame = await loadGame(currentGame.id);
+      if (serverGame && serverGame.lastSyncTimestamp > currentGame.lastSyncTimestamp) {
+        set({ game: serverGame });
+      }
     },
     joinGame: (name: string) => {
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game || game.players.length >= game.maxPlayers) return;
 
       const newPlayer: Player = {
@@ -244,11 +270,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         lastSyncTimestamp: Date.now(),
       };
 
+      saveGame(game.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
     submitVote: (playerId: string, value: number, confidence: number) => {
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
 
       const updatedPlayers = game.players.map((player) =>
@@ -272,8 +298,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         lastSyncTimestamp: Date.now(),
       };
 
+      saveGame(game.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
     startTimer,
     stopTimer: () => {
@@ -285,7 +311,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
       
       const updatedGame = {
@@ -294,8 +320,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         isPaused: false,
         lastSyncTimestamp: Date.now(),
       };
+      saveGame(updatedGame.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
     pauseTimer: () => {
       if (timerInterval) {
@@ -306,7 +332,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
       
       const updatedGame = {
@@ -314,11 +340,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         isPaused: true,
         lastSyncTimestamp: Date.now(),
       };
+      saveGame(updatedGame.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
     resumeTimer: () => {
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
 
       const updatedGame = {
@@ -326,12 +352,12 @@ export const useGameStore = create<GameStore>((set, get) => {
         isPaused: false,
         lastSyncTimestamp: Date.now(),
       };
+      saveGame(updatedGame.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
       startTimer();
     },
     resetVotes: () => {
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
 
       const newStoryPoint: StoryPoint = {
@@ -347,15 +373,15 @@ export const useGameStore = create<GameStore>((set, get) => {
         players: game.players.map((player) => ({ ...player, vote: null })),
         isVotingComplete: false,
         timeRemaining: game.timerDuration,
-        isTimerRunning: false,
+        isTimerRunning: false, // Timer starts stopped in new rounds
         isPaused: false,
         storyPointHistory: [...game.storyPointHistory, newStoryPoint],
         currentRound: game.currentRound + 1,
         lastSyncTimestamp: Date.now(),
       };
 
+      saveGame(game.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
     completeVoting: () => {
       if (timerInterval) {
@@ -366,7 +392,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
       
       const updatedGame = {
@@ -376,11 +402,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         isPaused: false,
         lastSyncTimestamp: Date.now(),
       };
+      saveGame(updatedGame.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
     takeOverPlayer: (playerId: string) => {
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
       
       const playerIndex = game.players.findIndex((p) => p.id === playerId);
@@ -391,11 +417,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         currentPlayerIndex: playerIndex,
         lastSyncTimestamp: Date.now(),
       };
+      saveGame(updatedGame.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
     updateConsensusThreshold: (threshold: number) => {
-      const { game, wsClient } = get();
+      const game = get().game;
       if (!game) return;
       
       const updatedGame = {
@@ -403,8 +429,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         consensusThreshold: threshold,
         lastSyncTimestamp: Date.now(),
       };
+      saveGame(updatedGame.id, updatedGame);
       set({ game: updatedGame });
-      wsClient?.updateGameState(updatedGame);
     },
   };
 });

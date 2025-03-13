@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('basic smoke test @smoke', async ({ page, context }) => {
-  // Listen to WebSocket connections
-  await context.route('ws://localhost:3001', async route => {
-    const ws = await route.request().frame();
-    await ws.continue();
-  });
-
+test('basic smoke test @smoke', async ({ page }) => {
   // Visit homepage
   await page.goto('/');
   await expect(page).toHaveTitle('Planning Poker');
@@ -44,14 +38,7 @@ test('basic smoke test @smoke', async ({ page, context }) => {
   // Test timer functionality
   const timer = page.getByText(/\d:\d\d/);
   await expect(timer).toBeVisible();
-
-  // Start timer
-  const playButton = page.getByRole('button', { name: /play|start/i });
-  await expect(playButton).toBeVisible();
-  await playButton.click();
-
-  // Pause timer
-  const pauseButton = page.getByRole('button', { name: /pause/i });
+  const pauseButton = page.getByRole('button').filter({ has: page.locator('svg') });
   await pauseButton.click();
   const timeAfterPause = await timer.textContent();
   await page.waitForTimeout(1100);

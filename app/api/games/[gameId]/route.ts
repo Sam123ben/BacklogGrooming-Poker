@@ -22,7 +22,6 @@ function getRedisClient() {
   return redis;
 }
 
-
 const GAME_KEY_PREFIX = 'planning-poker:game:';
 const GAME_TTL = 60 * 60 * 24; // 24 hours
 

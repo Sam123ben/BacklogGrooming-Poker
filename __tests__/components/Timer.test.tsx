@@ -14,14 +14,6 @@ vi.mock('@/lib/store', () => ({
   useGameStore: vi.fn(),
 }));
 
-vi.mock('@/lib/websocket', () => ({
-  WebSocketClient: vi.fn().mockImplementation(() => ({
-    sendMessage: vi.fn(),
-    updateGameState: vi.fn(),
-    disconnect: vi.fn(),
-  })),
-}));
-
 describe('Timer Component', () => {
   const mockGame = {
     id: 'test-game-id',
@@ -41,11 +33,6 @@ describe('Timer Component', () => {
 
   const mockStore = {
     game: mockGame,
-    wsClient: {
-      sendMessage: vi.fn(),
-      updateGameState: vi.fn(),
-      disconnect: vi.fn(),
-    },
     startTimer: vi.fn(),
     pauseTimer: vi.fn(),
     resumeTimer: vi.fn(),
