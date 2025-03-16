@@ -1,5 +1,5 @@
 # Stage 1: Base Image for Dependencies
-FROM ghcr.io/sam123ben/poker-base:latest AS deps
+FROM sam123ben/poker-base:latest AS deps
 
 # Copy package files for Node dependencies
 COPY package*.json ./

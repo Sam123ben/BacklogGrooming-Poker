@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: planning-poker
-        image: ghcr.io/sam123ben/planning-poker:latest
+        image: sam123ben/planning-poker:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

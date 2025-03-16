@@ -4,7 +4,7 @@ fullnameOverride: ""
 
 ## Image settings
 image:
-  repository: ghcr.io/sam123ben/planning-poker
+  repository: sam123ben/planning-poker
   tag: latest
   pullPolicy: IfNotPresent
 
