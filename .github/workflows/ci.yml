@@ -30,9 +30,9 @@ jobs:
       - name: Docker Login
         uses: ./.github/actions/docker-login
         with:
-          ghcr-registry: ${{ env.DOCKER_REGISTRY }}
-          github-username: sam123ben
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          dockerhub-registry: ${{ env.DOCKER_REGISTRY }}
+          dockerhub-username: sam123ben
+          dockerhub-token: ${{ secrets.DOCKER_PUBLIC_PAT }}
 
       - name: Run linting
         run: docker buildx build --platform linux/amd64 --load --target test-base -t test-base . && docker run --rm test-base npm run lint
@@ -48,9 +48,9 @@ jobs:
       - name: Docker Login
         uses: ./.github/actions/docker-login
         with:
-          ghcr-registry: ${{ env.DOCKER_REGISTRY }}
-          github-username: sam123ben
-          github-token: ${{ secrets.CR_GH_PUBLIC_PAT }}
+          dockerhub-registry: ${{ env.DOCKER_REGISTRY }}
+          dockerhub-username: sam123ben
+          dockerhub-token: ${{ secrets.DOCKER_PUBLIC_PAT }}
 
       - name: Run unit tests
         run: docker buildx build --platform linux/amd64 --load --target unit-test -t unit-test . && docker run --rm unit-test
@@ -71,9 +71,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         
-      - name: Docker Login to GHCR
+      - name: Docker Login to DOCKERHUB
         run: |
-          echo "${{ secrets.CR_GH_PUBLIC_PAT }}" | docker login docker.io -u sam123ben --password-stdin
+          echo "${{ secrets.DOCKER_PUBLIC_PAT }}" | docker login docker.io -u sam123ben --password-stdin
           
       - name: Extract metadata for Docker
         id: meta
