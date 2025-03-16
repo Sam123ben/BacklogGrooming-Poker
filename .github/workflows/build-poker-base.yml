@@ -1,16 +1,16 @@
-name: Build & Push Poker Base Image
+name: Build & Push Poker Base Image - Disabled
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - "Dockerfile-base"
-      - ".github/workflows/build-poker-base.yml"
-      - "package.json"
-      - "package-lock.json"
-  schedule:
-    - cron: "0 12 * * 5" # Runs every Friday at 10 PM AEST (12:00 PM UTC)
-  workflow_dispatch:
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - "Dockerfile-base"
+#       - ".github/workflows/build-poker-base.yml"
+#       - "package.json"
+#       - "package-lock.json"
+#   schedule:
+#     - cron: "0 12 * * 5" # Runs every Friday at 10 PM AEST (12:00 PM UTC)
+#   workflow_dispatch:
 
 env:
   GHCR_REGISTRY: ghcr.io
