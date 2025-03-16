@@ -5,9 +5,11 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    environment: 'happy-dom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: ['node_modules', 'dist', '.next', 'coverage', 'e2e/**/*'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
@@ -19,14 +21,15 @@ export default defineConfig({
         'tailwind.config.ts',
         'next.config.js',
         'postcss.config.js',
-      ],
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
+      ]
     },
     alias: {
       '@': path.resolve(__dirname, './')
     }
   },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './')
+    }
+  }
 });

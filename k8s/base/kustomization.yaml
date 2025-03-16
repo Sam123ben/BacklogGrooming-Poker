@@ -16,8 +16,38 @@ resources:
 - env-secret.yaml
 - certificate.yaml
 - servicemonitor.yaml
+- network-policies.yaml
+- pdb.yaml
+- quotas.yaml
 
 configMapGenerator:
 - name: planning-poker-config
   literals:
   - NODE_ENV=production
+  - LOG_LEVEL=info
+  - METRICS_ENABLED=true
+
+secretGenerator:
+- name: redis-credentials
+  literals:
+  - password=change-me-in-production
+
+patches:
+- target:
+    kind: Deployment
+    name: planning-poker
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/securityContext
+      value:
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1000
+        allowPrivilegeEscalation: false
+    - op: add
+      path: /spec/template/spec/securityContext
+      value:
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault

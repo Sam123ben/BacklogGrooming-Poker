@@ -17,10 +17,7 @@ export type PlayerCardProps = {
 export type VotingCardsProps = {
   selectedValue: number | null;
   confidence: number;
-  activeTooltip?: number | null;
   onCardClick: (number: number) => void;
-  onInfoClick?: (e: React.MouseEvent, number: number) => void;
-  onTooltipChange?: (open: boolean, number: number) => void;
   onConfidenceChange: (value: number) => void;
   onSubmitVote: () => void;
 };

@@ -1,0 +1,12 @@
+{
+  "name": "planning-poker-smoke-test",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:smoke": "playwright test --grep @smoke"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.1",
+    "typescript": "5.2.2"
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useGameStore, Player, Vote } from "@/lib/store";
+import { useGameStore } from "@/lib/store";
 import { useState, useCallback, useMemo } from "react";
 import { PlayerCard } from "./player-card";
 import { VotingCards } from "./voting-cards";

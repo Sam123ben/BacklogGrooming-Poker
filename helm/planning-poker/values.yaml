@@ -4,7 +4,7 @@ fullnameOverride: ""
 
 ## Image settings
 image:
-  repository: planning-poker
+  repository: ghcr.io/sam123ben/planning-poker
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -26,12 +26,22 @@ resources:
 ## Redis settings
 redis:
   enabled: true
-  architecture: standalone
+  architecture: replication
   auth:
-    enabled: false
+    enabled: true
+    existingSecret: redis-credentials
+  sentinel:
+    enabled: true
+    replicas: 3
   persistence:
     enabled: true
     size: 10Gi
+  backup:
+    enabled: true
+    schedule: "0 0 * * *"
+    storage:
+      className: standard
+      size: 10Gi
   resources:
     limits:
       cpu: 200m
@@ -65,6 +75,10 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
   hosts:
     - host: planning-poker.example.com
       paths:
@@ -85,4 +99,52 @@ metrics:
   enabled: true
   serviceMonitor:
     enabled: true
-    interval: 30s
+    labels:
+      release: prometheus
+    interval: 15s
+    scrapeTimeout: 10s
+    metricRelabelings:
+      - sourceLabels: [__name__]
+        regex: 'http_.*'
+        action: keep
+      - sourceLabels: [__name__]
+        regex: 'redis_.*'
+        action: keep
+
+## Network Policies
+networkPolicies:
+  enabled: true
+  ingressRules:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+  egressRules:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: redis
+        ports:
+          - protocol: TCP
+            port: 6379
+
+## Pod Disruption Budget
+pdb:
+  enabled: true
+  minAvailable: 1
+
+## Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+  customMetrics:
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: 1000

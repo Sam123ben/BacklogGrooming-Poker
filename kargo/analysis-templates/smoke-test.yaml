@@ -1,0 +1,19 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: smoke-test
+  namespace: kargo-system
+spec:
+  metrics:
+  - name: smoke-test-status
+    provider: webhook
+    successCondition: result.status == 'passed'
+    query: smoke_test_status
+  - name: api-health
+    provider: webhook
+    successCondition: result.status == 'healthy'
+    query: api_health
+  - name: redis-connection
+    provider: webhook
+    successCondition: result.status == 'connected'
+    query: redis_connection

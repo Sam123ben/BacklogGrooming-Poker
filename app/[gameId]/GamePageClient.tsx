@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -16,7 +14,9 @@ import {
 import { useGameStore } from "@/lib/store";
 import { PlayingCards } from "@/components/playing-cards";
 import { Timer } from "@/components/timer";
-import { Users } from "lucide-react";
+import { AvatarPicker } from "@/components/ui/avatar-picker";
+import { WaitingScreen } from "@/components/waiting-screen";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 interface GamePageClientProps {
   gameId: string;
@@ -25,20 +25,32 @@ interface GamePageClientProps {
 export default function GamePageClient({ gameId }: GamePageClientProps) {
   const router = useRouter();
   const { game, loadGame, joinGame } = useGameStore();
-  const [playerName, setPlayerName] = useState("");
+  const [hasJoined, setHasJoined] = useState(false);
 
-  useEffect(() => {
+  const refreshGame = useCallback(() => {
     if (gameId) {
       loadGame(gameId);
     }
   }, [gameId, loadGame]);
 
-  const handleJoinGame = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (playerName.trim()) {
-      joinGame(playerName);
-      setPlayerName("");
+  useEffect(() => {
+    refreshGame();
+  }, [refreshGame]);
+
+  // Auto-start game when all players have joined
+  useEffect(() => {
+    if (game?.canStartGame && !game.isTimerRunning) {
+      // Small delay to allow for state sync
+      const timer = setTimeout(() => {
+        useGameStore.getState().startGame();
+      }, 1000);
+      return () => clearTimeout(timer);
     }
+  }, [game?.canStartGame, game?.isTimerRunning]);
+
+  const handleJoinGame = (name: string, avatarUrl: string) => {
+    joinGame(name, avatarUrl);
+    setHasJoined(true);
   };
 
   // When game data isn't loaded or the game doesn't exist:
@@ -73,56 +85,43 @@ export default function GamePageClient({ gameId }: GamePageClientProps) {
     );
   }
 
-  // If the game is not full yet, show the join game form.
-  if (game.players.length < game.maxPlayers) {
+  // If the player hasn't joined yet and there are available slots
+  if (!hasJoined && game.players.some(p => !p.hasJoined)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeSwitcher />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Card className="w-[400px] shadow-xl backdrop-blur-sm bg-white/80 dark:bg-gray-900/80 border border-blue-100 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-200">
-                Join Game
-              </CardTitle>
-              <CardDescription className="text-center text-blue-600 dark:text-blue-400">
-                {game.players.length} of {game.maxPlayers} players joined
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleJoinGame} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Your Name</Label>
-                  <div className="relative">
-                    <Input
-                      id="name"
-                      value={playerName}
-                      onChange={(e) => setPlayerName(e.target.value)}
-                      placeholder="Enter your name"
-                      className="pl-10"
-                      required
-                    />
-                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500" />
-                  </div>
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-300"
-                  size="lg"
-                >
-                  Join Game
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <AvatarPicker onSubmit={handleJoinGame} />
         </motion.div>
       </div>
     );
   }
 
-  // If the game is full, display the game session (voting/results view)
+  // Waiting for other players to join
+  if (!game.canStartGame) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeSwitcher />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <WaitingScreen onRefresh={refreshGame} />
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Game is in progress
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
@@ -134,7 +133,10 @@ export default function GamePageClient({ gameId }: GamePageClientProps) {
           >
             Planning Poker
           </motion.h1>
-          <Timer />
+          <div className="flex items-center gap-4">
+            <Timer />
+            <ThemeSwitcher />
+          </div>
         </div>
         <AnimatePresence mode="wait">
           <motion.div

@@ -1,0 +1,32 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: load-test
+  namespace: kargo-system
+spec:
+  metrics:
+  - name: latency-p99
+    provider: prometheus
+    successCondition: result < 500
+    query: |
+      histogram_quantile(0.99, sum(rate(http_request_duration_ms_bucket{job="planning-poker"}[5m])) by (le))
+  - name: error-budget
+    provider: prometheus
+    successCondition: result >= 0.99
+    query: |
+      sum(rate(http_requests_total{job="planning-poker",code!~"5.."}[5m])) / sum(rate(http_requests_total{job="planning-poker"}[5m]))
+  - name: redis-memory
+    provider: prometheus
+    successCondition: result < 80
+    query: |
+      100 * redis_memory_used_bytes{instance=~"planning-poker-redis.*"} / redis_memory_max_bytes
+  - name: websocket-connections
+    provider: prometheus
+    successCondition: result < 1000
+    query: |
+      sum(websocket_connections_total{job="planning-poker"})
+  - name: cpu-usage
+    provider: prometheus
+    successCondition: result < 80
+    query: |
+      avg(rate(container_cpu_usage_seconds_total{pod=~"planning-poker.*"}[5m])) * 100

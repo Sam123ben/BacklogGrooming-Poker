@@ -1,0 +1,19 @@
+name: Performance Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  performance-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run performance tests
+        run: |
+          docker-compose -f tests/performance/docker-compose.yml up -d
+          docker build --target perf-test . -t perf-test && docker run perf-test
+          docker-compose -f tests/performance/docker-compose.yml down

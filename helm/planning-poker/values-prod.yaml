@@ -26,3 +26,5 @@ env:
   REDIS_HOST: redis
   REDIS_PORT: "6379"
   REDIS_SSL: "false"
+  # Playwright Configuration
+  PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000

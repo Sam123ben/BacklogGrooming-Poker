@@ -1,0 +1,23 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: security-scan
+  namespace: kargo-system
+spec:
+  metrics:
+  - name: vulnerability-scan
+    provider: webhook
+    successCondition: result.status == 'passed' && result.critical == 0
+    query: vulnerability_scan
+  - name: dependency-check
+    provider: webhook
+    successCondition: result.status == 'passed' && result.high_severity == 0
+    query: dependency_check
+  - name: container-scan
+    provider: webhook
+    successCondition: result.status == 'passed' && result.critical_vulnerabilities == 0
+    query: container_scan
+  - name: secret-scan
+    provider: webhook
+    successCondition: result.status == 'passed' && result.exposed_secrets == 0
+    query: secret_scan

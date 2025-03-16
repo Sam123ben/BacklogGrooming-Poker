@@ -201,3 +201,5 @@ kargo export promotion planning-poker > promotion-debug.yaml
 3. Submit a pull request
 
 ## License
+
+This configuration is licensed under the MIT License.

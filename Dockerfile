@@ -1,45 +1,66 @@
-# Stage 1: Dependencies
-FROM node:20-slim AS deps
-WORKDIR /app
-COPY package.json package-lock.json ./
+# Stage 1: Base Image for Dependencies
+FROM ghcr.io/sam123ben/poker-base:latest AS deps
+
+# Copy package files for Node dependencies
+COPY package*.json ./
+
+# Install Node.js dependencies
 RUN npm ci
 
-# Stage 2: Builder
-FROM node:20-slim AS builder
+# Stage 2: Test Base
+FROM deps AS test-base
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Set build-time environment variables
-ARG NEXT_PUBLIC_APP_URL
-ARG NEXT_PUBLIC_APP_NAME
-ARG NEXT_PUBLIC_APP_DESCRIPTION
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_AUTH_ENABLED
-ARG NEXT_PUBLIC_ENABLE_DARK_MODE
-ARG NEXT_PUBLIC_ENABLE_ANALYTICS
-
-ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
-ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
-ENV NEXT_PUBLIC_APP_DESCRIPTION=$NEXT_PUBLIC_APP_DESCRIPTION
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_AUTH_ENABLED=$NEXT_PUBLIC_AUTH_ENABLED
-ENV NEXT_PUBLIC_ENABLE_DARK_MODE=$NEXT_PUBLIC_ENABLE_DARK_MODE
-ENV NEXT_PUBLIC_ENABLE_ANALYTICS=$NEXT_PUBLIC_ENABLE_ANALYTICS
-
 RUN npm run build
 
-# Stage 3: Runner
-FROM nginx:alpine AS runner
-WORKDIR /usr/share/nginx/html
-RUN rm -rf ./*
-COPY --from=builder /app/out .
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Stage 3: Unit Tests
+FROM test-base AS unit-test
+ENV CI=true
+ENV NODE_ENV=test
+CMD ["npm", "run", "test"]
 
-# Create a script to replace environment variables at runtime
-RUN echo "#!/bin/sh" > /docker-entrypoint.d/40-replace-env-vars.sh && \
-    echo "envsubst '\$NEXT_PUBLIC_APP_URL \$NEXT_PUBLIC_APP_NAME \$NEXT_PUBLIC_APP_DESCRIPTION \$NEXT_PUBLIC_API_URL \$NEXT_PUBLIC_AUTH_ENABLED \$NEXT_PUBLIC_ENABLE_DARK_MODE \$NEXT_PUBLIC_ENABLE_ANALYTICS' < /usr/share/nginx/html/index.html > /usr/share/nginx/html/index.html.tmp && mv /usr/share/nginx/html/index.html.tmp /usr/share/nginx/html/index.html" >> /docker-entrypoint.d/40-replace-env-vars.sh && \
-    chmod +x /docker-entrypoint.d/40-replace-env-vars.sh
+# Stage 4: E2E Tests
+FROM test-base AS e2e-test
+ENV CI=true
+ENV NODE_ENV=test
+CMD ["xvfb-run", "--auto-servernum", "--server-args='-screen 0 1280x960x24'", "npm", "run", "test:e2e"]
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Stage 5: Acceptance Tests
+FROM test-base AS acceptance-test
+ENV CI=true
+ENV NODE_ENV=test
+CMD ["xvfb-run", "--auto-servernum", "--server-args='-screen 0 1280x960x24'", "npm", "run", "test:acceptance"]
+
+# Stage 6: Smoke Tests
+FROM test-base AS smoke-test
+ENV CI=true
+ENV NODE_ENV=test
+CMD ["xvfb-run", "--auto-servernum", "--server-args='-screen 0 1280x960x24'", "npm", "run", "test:smoke"]
+
+# Stage 7: Performance Tests
+FROM test-base AS perf-test
+ENV CI=true
+ENV NODE_ENV=test
+EXPOSE 8089
+CMD ["npm", "run", "test:perf"]
+
+# Stage 8: Builder
+FROM test-base AS builder
+ENV NODE_ENV=production
+RUN npm run build
+
+# Stage 9: Production Runner
+FROM node:23-alpine AS runner
+WORKDIR /app
+
+# Copy built assets and dependencies
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# Set environment variables
+ENV PORT=3000
+EXPOSE 3000
+
+# Run the Next.js app in production mode
+CMD ["node", "server.js"]

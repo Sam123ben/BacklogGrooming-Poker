@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 export default function Home() {
   const router = useRouter();
@@ -35,7 +36,10 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-blue-100 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeSwitcher />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -49,12 +53,14 @@ export default function Home() {
               transition={{ duration: 0.5, type: "spring" }}
               className="flex items-center justify-center mb-4"
             >
-              <Dices className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+              <div className="p-3 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/10 dark:to-primary/5">
+                <Dices className="w-12 h-12 text-primary" />
+              </div>
             </motion.div>
-            <CardTitle className="text-3xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-200">
+            <CardTitle className="text-3xl font-bold text-center gradient-text">
               Planning Poker
             </CardTitle>
-            <CardDescription className="text-center text-blue-600 dark:text-blue-400">
+            <CardDescription className="text-center text-primary">
               Create a new planning poker session
             </CardDescription>
           </CardHeader>
@@ -71,9 +77,9 @@ export default function Home() {
                       max={10}
                       value={playerCount}
                       onChange={(e) => setPlayerCount(Number(e.target.value))}
-                      className="pl-10"
+                      className="pl-10 bg-background/50"
                     />
-                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500" />
+                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary" />
                   </div>
                 </div>
               </div>
@@ -85,7 +91,7 @@ export default function Home() {
                       value={String(timerDuration)}
                       onValueChange={(value) => setTimerDuration(Number(value))}
                     >
-                      <SelectTrigger id="timer" className="w-full pl-10">
+                      <SelectTrigger id="timer" className="w-full pl-10 bg-background/50">
                         <SelectValue placeholder="Select duration" />
                       </SelectTrigger>
                       <SelectContent>
@@ -94,12 +100,12 @@ export default function Home() {
                         <SelectItem value="600">10 minutes</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500" />
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary" />
                   </div>
                 </div>
               </div>
               <Button
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-300"
+                className="w-full bg-gradient-to-r from-[hsl(var(--gradient-start))] to-[hsl(var(--gradient-end))] hover:opacity-90 transition-opacity animate-gradient"
                 size="lg"
                 onClick={handleCreateGame}
               >

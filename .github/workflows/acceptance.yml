@@ -1,0 +1,16 @@
+name: Acceptance Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  acceptance-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run acceptance tests
+        run: docker build --target acceptance-test . -t acceptance-test && docker run acceptance-test

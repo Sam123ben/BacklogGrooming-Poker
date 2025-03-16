@@ -1,0 +1,57 @@
+# Stage 1: Base Image for Dependencies
+FROM node:23-slim AS base
+
+# Define working directory
+WORKDIR /app
+
+# Install system dependencies for Playwright and other tools
+RUN apt-get update && apt-get install -y \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libglib2.0-0 \
+    libnss3-tools \
+    libxss1 \
+    libxtst6 \
+    xvfb \
+    python3 \
+    python3-venv \
+    python3-pip \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a virtual environment for Python dependencies
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Copy package files for Node dependencies
+COPY package*.json ./
+
+# Install Node.js dependencies
+RUN npm ci
+
+# Install Playwright browsers and dependencies
+RUN npx playwright install chromium --with-deps
+RUN npx playwright install-deps chromium
+
+# Copy Python requirements for performance testing
+COPY tests/performance/requirements.txt ./
+
+# Install Python dependencies inside the virtual environment
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Final step to ensure this image is tagged appropriately as a base image
+LABEL org.opencontainers.image.description="Base image for Playwright, Node, and Python dependencies"
+LABEL org.opencontainers.image.version="1.0.0"

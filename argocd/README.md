@@ -220,3 +220,5 @@ argocd app wait planning-poker-development
 3. Submit a pull request
 
 ## License
+
+This configuration is licensed under the MIT License.

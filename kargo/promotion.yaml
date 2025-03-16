@@ -8,7 +8,7 @@ spec:
   source:
     stage: development
   targets:
-  - stage: production
+  - stage: staging
     requirements:
     - name: smoke-tests
       stageGate:
@@ -21,7 +21,7 @@ spec:
                   image: mcr.microsoft.com/playwright:v1.42.1-jammy
                   env:
                   - name: BASE_URL
-                    value: "http://planning-poker.development.svc.cluster.local"
+                    value: "http://planning-poker.staging.svc.cluster.local"
                   - name: CI
                     value: "true"
                   command:
@@ -32,12 +32,17 @@ spec:
                     npm ci
                     npx playwright install chromium --with-deps
                     npm run test:smoke
-                    # Send webhook notification on success
+                    # Send webhook on completion
                     if [ $? -eq 0 ]; then
                       curl -X POST \
                         -H "Content-Type: application/json" \
-                        -d '{"event": "smoke_test_passed", "service": "planning-poker"}' \
-                        ${KARGO_WEBHOOK_URL}
+                        -d '{"status": "passed"}' \
+                        ${KARGO_WEBHOOK_URL}/smoke-test
+                    else
+                      curl -X POST \
+                        -H "Content-Type: application/json" \
+                        -d '{"status": "failed"}' \
+                        ${KARGO_WEBHOOK_URL}/smoke-test
                     fi
                   env:
                   - name: KARGO_WEBHOOK_URL
@@ -58,7 +63,114 @@ spec:
       interval: 10s
       count: 1
       metrics:
-      - name: smoke_test_success
+      - name: smoke_test_status
         provider: webhook
-        successCondition: result.smoke_test_passed == true
-        query: smoke_test_passed
+        successCondition: result.status == 'passed'
+  - stage: production
+    requirements:
+    - name: smoke-tests
+      stageGate:
+        jobTemplate:
+          spec:
+            template:
+              spec:
+                containers:
+                - name: smoke-test
+                  image: mcr.microsoft.com/playwright:v1.42.1-jammy
+                  env:
+                  - name: BASE_URL
+                    value: "http://planning-poker.production.svc.cluster.local"
+                  - name: CI
+                    value: "true"
+                  command:
+                  - /bin/bash
+                  - -c
+                  - |
+                    cd /app
+                    npm ci
+                    npx playwright install chromium --with-deps
+                    npm run test:smoke
+                    # Send webhook on completion
+                    if [ $? -eq 0 ]; then
+                      curl -X POST \
+                        -H "Content-Type: application/json" \
+                        -d '{"status": "passed"}' \
+                        ${KARGO_WEBHOOK_URL}/smoke-test
+                    else
+                      curl -X POST \
+                        -H "Content-Type: application/json" \
+                        -d '{"status": "failed"}' \
+                        ${KARGO_WEBHOOK_URL}/smoke-test
+                    fi
+                  env:
+                  - name: KARGO_WEBHOOK_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: kargo-webhooks
+                        key: url
+                  volumeMounts:
+                  - name: app-source
+                    mountPath: /app
+                volumes:
+                - name: app-source
+                  configMap:
+                    name: planning-poker-smoke-test
+    - name: e2e-tests
+      stageGate:
+        jobTemplate:
+          spec:
+            template:
+              spec:
+                containers:
+                - name: e2e-test
+                  image: mcr.microsoft.com/playwright:v1.42.1-jammy
+                  env:
+                  - name: BASE_URL
+                    value: "http://planning-poker.production.svc.cluster.local"
+                  - name: CI
+                    value: "true"
+                  command:
+                  - /bin/bash
+                  - -c
+                  - |
+                    cd /app
+                    npm ci
+                    npx playwright install chromium --with-deps
+                    npm run test:e2e
+                    # Send webhook on completion
+                    if [ $? -eq 0 ]; then
+                      curl -X POST \
+                        -H "Content-Type: application/json" \
+                        -d '{"status": "passed"}' \
+                        ${KARGO_WEBHOOK_URL}/e2e-test
+                    else
+                      curl -X POST \
+                        -H "Content-Type: application/json" \
+                        -d '{"status": "failed"}' \
+                        ${KARGO_WEBHOOK_URL}/e2e-test
+                    fi
+                  env:
+                  - name: KARGO_WEBHOOK_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: kargo-webhooks
+                        key: url
+                  volumeMounts:
+                  - name: app-source
+                    mountPath: /app
+                volumes:
+                - name: app-source
+                  configMap:
+                    name: planning-poker-e2e-test
+    analysis:
+      successfulRuns: 1
+      failureLimit: 0
+      interval: 10s
+      count: 1
+      metrics:
+      - name: smoke_test_status
+        provider: webhook
+        successCondition: result.status == 'passed'
+      - name: e2e_test_status
+        provider: webhook
+        successCondition: result.status == 'passed'

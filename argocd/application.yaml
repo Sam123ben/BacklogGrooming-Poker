@@ -11,6 +11,11 @@ spec:
     repoURL: https://github.com/your-org/planning-poker.git
     targetRevision: HEAD
     path: argocd
+    plugin:
+      name: kustomize
+      env:
+        - name: KUSTOMIZE_BUILD_OPTIONS
+          value: "--enable-helm"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -18,12 +23,25 @@ spec:
     automated:
       prune: true
       selfHeal: true
+      allowEmpty: false
     syncOptions:
-    - CreateNamespace=true
-    - ServerSideApply=true
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/metrics

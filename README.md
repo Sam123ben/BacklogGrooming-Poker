@@ -2,7 +2,7 @@
 
 A real-time planning poker application for agile teams with a modern, responsive interface and robust features.
 
-![Planning Poker](./image.png)
+![Planning Poker Screenshot](https://images.unsplash.com/photo-1611224923853-80b023f02d71?auto=format&fit=crop&w=1200&q=80)
 
 ## Features
 
@@ -265,3 +265,5 @@ See [DOCKER.md](DOCKER.md) for detailed container deployment instructions.
 5. Open a Pull Request
 
 ## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

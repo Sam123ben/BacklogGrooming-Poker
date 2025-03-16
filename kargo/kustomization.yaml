@@ -1,0 +1,69 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kargo-system
+
+resources:
+- stage.yaml
+- promotion.yaml
+- warehouse.yaml
+- analysis-templates/load-test.yaml
+- analysis-templates/security-scan.yaml
+- analysis-templates/smoke-test.yaml
+
+commonLabels:
+  app.kubernetes.io/name: planning-poker
+  app.kubernetes.io/part-of: planning-poker
+
+configMapGenerator:
+- name: planning-poker-smoke-test
+  files:
+  - package.json=test/smoke/package.json
+  - playwright.config.ts=test/smoke/playwright.config.ts
+  - smoke.spec.ts=test/smoke/smoke.spec.ts
+
+secretGenerator:
+- name: kargo-webhooks
+  envs:
+  - .env.webhooks
+
+patches:
+- target:
+    kind: Stage
+    name: development
+  patch: |-
+    - op: add
+      path: /spec/requirements
+      value:
+        - name: smoke-tests
+          stageGate:
+            analysisTemplate: smoke-test
+- target:
+    kind: Stage
+    name: staging
+  patch: |-
+    - op: add
+      path: /spec/requirements
+      value:
+        - name: smoke-tests
+          stageGate:
+            analysisTemplate: smoke-test
+        - name: security-scan
+          stageGate:
+            analysisTemplate: security-scan
+- target:
+    kind: Stage
+    name: production
+  patch: |-
+    - op: add
+      path: /spec/requirements
+      value:
+        - name: smoke-tests
+          stageGate:
+            analysisTemplate: smoke-test
+        - name: security-scan
+          stageGate:
+            analysisTemplate: security-scan
+        - name: load-test
+          stageGate:
+            analysisTemplate: load-test

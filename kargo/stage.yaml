@@ -22,7 +22,7 @@ spec:
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
-  name: production
+  name: staging
   namespace: kargo-system
 spec:
   pipeline: planning-poker
@@ -39,3 +39,38 @@ spec:
       stage:
         name: development
         subscription: helm-charts
+  requirements:
+  - name: smoke-tests
+    stageGate:
+      analysisTemplate: smoke-tests
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: production
+  namespace: kargo-system
+spec:
+  pipeline: planning-poker
+  promotionMechanics:
+    type: automated
+  subscriptions:
+  - name: docker-images
+    source:
+      stage:
+        name: staging
+        subscription: docker-images
+  - name: helm-charts
+    source:
+      stage:
+        name: staging
+        subscription: helm-charts
+  requirements:
+  - name: smoke-tests
+    stageGate:
+      analysisTemplate: smoke-tests
+  - name: security-scan
+    stageGate:
+      analysisTemplate: security-scan
+  - name: load-test
+    stageGate:
+      analysisTemplate: load-test

@@ -1,9 +1,11 @@
 "use client";
 
 import { memo } from "react";
+import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserPlus2 } from "lucide-react";
+import Image from "next/image";
 import {
   Tooltip,
   TooltipContent,
@@ -12,7 +14,6 @@ import {
 } from "@/components/ui/tooltip";
 import { CARD_COLORS } from "./constants";
 import { PlayerCardProps } from "./types";
-import { motion } from "framer-motion";
 
 const PlayerVote = memo(function PlayerVote({ 
   value, 
@@ -84,7 +85,7 @@ export const PlayerCard = memo(function PlayerCard({
       layout
     >
       <Card 
-        className={`w-32 h-48 flex flex-col items-center justify-center p-4 transition-colors duration-300
+        className={`w-40 h-56 flex flex-col items-center justify-between p-4 transition-all duration-300
           ${isVotingComplete && player.vote
             ? `bg-gradient-to-b ${CARD_COLORS[player.vote.value as keyof typeof CARD_COLORS]}`
             : player.vote 
@@ -94,20 +95,63 @@ export const PlayerCard = memo(function PlayerCard({
                 : "bg-white dark:bg-gray-800"
           }`}
       >
-        <div className="text-lg font-semibold mb-2">{player.name}</div>
-        {isVotingComplete && player.vote ? (
-          <PlayerVote value={player.vote.value} confidence={player.vote.confidence} />
-        ) : player.vote ? (
-          <VoteCheck />
-        ) : null}
-        
-        {!isCurrentPlayer && !isVotingComplete && (
+        {/* Avatar Section */}
+        <div className="relative w-20 h-20 mb-2">
+          <motion.div
+            initial={false}
+            animate={{ 
+              scale: isCurrentPlayer ? 1.1 : 1,
+              rotate: player.vote ? 360 : 0 
+            }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="relative w-full h-full rounded-full border-2 border-white dark:border-gray-700 shadow-lg overflow-hidden">
+              {player.hasJoined && player.avatarUrl ? (
+                <Image 
+                  src={player.avatarUrl}
+                  alt={player.name}
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-lg">
+                  {player.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+          </motion.div>
+          {isCurrentPlayer && (
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 dark:bg-blue-400 rounded-full flex items-center justify-center text-white text-xs shadow-lg">
+              ★
+            </div>
+          )}
+        </div>
+
+        {/* Name Section */}
+        <div className="text-lg font-semibold text-center mb-2 line-clamp-1">
+          {player.name || `Player ${player.id}`}
+        </div>
+
+        {/* Vote Section */}
+        <div className="flex-1 flex items-center justify-center">
+          {isVotingComplete && player.vote ? (
+            <PlayerVote value={player.vote.value} confidence={player.vote.confidence} />
+          ) : player.vote ? (
+            <VoteCheck />
+          ) : null}
+        </div>
+
+        {/* Take Over Button */}
+        {!isCurrentPlayer && !isVotingComplete && player.hasJoined && (
           <TakeOverButton 
             playerName={player.name} 
             onTakeOver={() => onTakeOver(player.id)} 
           />
         )}
 
+        {/* Participation Rate */}
         <div className="absolute -bottom-2 right-0 text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full">
           {player.participationRate}%
         </div>

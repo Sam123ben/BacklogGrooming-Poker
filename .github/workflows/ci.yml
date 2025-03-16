@@ -1,0 +1,117 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semantic version (e.g., 1.2.3)'
+        required: true
+        type: string
+
+env:
+  GHCR_REGISTRY: ghcr.io
+  IMAGE_NAME: sam123ben/planning-poker
+  PLATFORMS: linux/amd64,linux/arm64
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login
+        uses: ./.github/actions/docker-login
+        with:
+          ghcr-registry: ${{ env.GHCR_REGISTRY }}
+          github-username: sam123ben
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run linting
+        run: docker buildx build --platform linux/amd64 --load --target test-base -t test-base . && docker run --rm test-base npm run lint
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login
+        uses: ./.github/actions/docker-login
+        with:
+          ghcr-registry: ${{ env.GHCR_REGISTRY }}
+          github-username: sam123ben
+          github-token: ${{ secrets.CR_GH_PUBLIC_PAT }}
+
+      - name: Run unit tests
+        run: docker buildx build --platform linux/amd64 --load --target unit-test -t unit-test . && docker run --rm unit-test
+
+  build-and-push:
+    needs: [lint, unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Docker Login to GHCR
+        run: |
+          echo "${{ secrets.CR_GH_PUBLIC_PAT }}" | docker login ghcr.io -u sam123ben --password-stdin
+          
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "version=1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          target: runner
+          platforms: linux/amd64
+          file: ./Dockerfile
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

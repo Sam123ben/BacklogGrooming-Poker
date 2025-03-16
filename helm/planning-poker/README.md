@@ -244,3 +244,5 @@ kubectl delete pvc -l app=planning-poker
 3. Submit a pull request
 
 ## License
+
+This Helm chart is licensed under the MIT License.

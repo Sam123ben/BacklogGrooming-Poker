@@ -1,0 +1,16 @@
+name: Smoke Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run smoke tests
+        run: docker build --target smoke-test . -t smoke-test && docker run smoke-test
