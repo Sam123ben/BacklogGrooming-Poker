@@ -32,8 +32,3 @@ runs:
         registry: ${{ inputs.dockerhub-registry }}
         username: ${{ inputs.dockerhub-username }}
         password: ${{ inputs.dockerhub-token }}
-
-    - name: Log in to GHCR
-      run: |
-        echo "${{ inputs.github-token }}" | docker login ${{ inputs.ghcr-registry }} -u ${{ inputs.github-username }} --password-stdin
-      shell: bash
